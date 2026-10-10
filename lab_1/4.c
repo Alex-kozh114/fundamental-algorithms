@@ -21,31 +21,31 @@ static void print_error_message(status_code_t code)
     switch (code)
     {
     case STATUS_ERROR_INVALID_ARG_COUNT:
-        fprintf(stderr, "Ошибка: Неверное количество аргументов командной строки.\n");
+        printf("Ошибка: Неверное количество аргументов командной строки.\n");
         break;
     case STATUS_ERROR_INVALID_OPTION:
-        fprintf(stderr, "Ошибка: Неизвестный или некорректный формат флага.\n");
+        printf("Ошибка: Неизвестный или некорректный формат флага.\n");
         break;
     case STATUS_ERROR_INVALID_ARG_VALUE:
-        fprintf(stderr, "Ошибка: Недопустимое значение аргумента.\n");
+        printf("Ошибка: Недопустимое значение аргумента.\n");
         break;
     case STATUS_ERROR_FILE_OPEN:
-        fprintf(stderr, "Ошибка: Не удалось открыть или создать файл.\n");
+        printf("Ошибка: Не удалось открыть или создать файл.\n");
         break;
     case STATUS_ERROR_FILE_READ:
-        fprintf(stderr, "Ошибка при чтении из файла.\n");
+        printf("Ошибка при чтении из файла.\n");
         break;
     case STATUS_ERROR_FILE_WRITE:
-        fprintf(stderr, "Ошибка при записи в файл.\n");
+        printf("Ошибка при записи в файл.\n");
         break;
     case STATUS_ERROR_MEMORY_ALLOCATION:
-        fprintf(stderr, "Ошибка: Не удалось выделить память.\n");
+        printf("Ошибка: Не удалось выделить память.\n");
         break;
     case STATUS_ERROR_NULL_POINTER:
-        fprintf(stderr, "Ошибка: В функцию был передан пустой указатель (NULL).\n");
+        printf("Ошибка: В функцию был передан пустой указатель (NULL).\n");
         break;
     default:
-        fprintf(stderr, "Произошла неизвестная ошибка (Код: %d).\n", code);
+        printf("Произошла неизвестная ошибка (Код: %d).\n", code);
         break;
     }
 }
@@ -282,9 +282,9 @@ int main(int argc, char *argv[])
     if (argc < 3)
     {
         print_error_message(STATUS_ERROR_INVALID_ARG_COUNT);
-        fprintf(stderr, "Использование:\n");
-        fprintf(stderr, "  %s <-d|-i|-s|-a> <input_file>\n", argv[0]);
-        fprintf(stderr, "  %s <-nd|-ni|-ns|-na> <input_file> <output_file>\n", argv[0]);
+        printf("Использование:\n");
+        printf("  %s <-d|-i|-s|-a> <input_file>\n", argv[0]);
+        printf("  %s <-nd|-ni|-ns|-na> <input_file> <output_file>\n", argv[0]);
         return STATUS_ERROR_INVALID_ARG_COUNT;
     }
 
@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
     if (same)
     {
         print_error_message(STATUS_ERROR_FILE_OPEN);
-        fprintf(stderr, "Ошибка: Входной и выходной файлы не могут совпадать.\n");
+        printf("Ошибка: Входной и выходной файлы не могут совпадать.\n");
         free(output_filename);
         return STATUS_ERROR_FILE_OPEN;
     }

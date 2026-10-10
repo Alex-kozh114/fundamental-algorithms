@@ -16,6 +16,33 @@ typedef enum
     STATUS_ERROR_OUT_OF_RANGE,
 } status_code_t;
 
+static void print_error(const status_code_t status)
+{
+    switch (status)
+    {
+    case STATUS_OK:
+        break;
+    case STATUS_ERROR_INVALID_ARG_VALUE:
+    case STATUS_ERROR_INVALID_FORMAT:
+    case PARSE_ERROR:
+        printf("Ошибка: Введенное число имеет неверный формат или содержит недопустимые символы.\n");
+        break;
+    case STATUS_ERROR_OUT_OF_RANGE:
+    case RANGE_ERROR:
+        printf("Ошибка: Значение выходит за пределы допустимого диапазона .\n");
+        break;
+    case OVERFLOW_ERROR:
+        printf("Ошибка: Произошло математическое переполнение при вычислениях.\n");
+        break;
+    case STATUS_ERROR_NULL_POINTER:
+        printf("Ошибка: Попытка обращения к NULL-указателю.\n");
+        break;
+    default:
+        printf("Произошла неизвестная ошибка (Код: %d).\n", status);
+        break;
+    }
+}
+
 static int char_to_digit(char c)
 {
     if (c >= '0' && c <= '9')
@@ -229,7 +256,7 @@ int main(void)
     status_code_t err = parser_long_long_data_type(base_buf, 10, &base_ll);
     if (err != STATUS_OK)
     {
-        printf("Некорректное основание: '%s'\n", base_buf);
+        print_error(err);
         return err;
     }
     if (base_ll < 2 || base_ll > 36)
@@ -258,7 +285,8 @@ int main(void)
         err = parser_long_long_data_type(buf, base, &num);
         if (err != STATUS_OK)
         {
-            printf("Некорректное число: '%s'\n", buf);
+            printf("Число '%s': ", buf);
+            print_error(err);
             return err;
         }
         

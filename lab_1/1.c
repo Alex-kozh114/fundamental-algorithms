@@ -296,33 +296,33 @@ static void print_error_message(status_code_t code)
     switch (code)
     {
     case STATUS_ERROR_INVALID_ARG_COUNT:
-        fprintf(stderr, "Ошибка: Неверное количество аргументов командной строки.\n");
+        printf("Ошибка: Неверное количество аргументов командной строки.\n");
         break;
     case STATUS_ERROR_INVALID_OPTION:
-        fprintf(stderr, "Ошибка: Неизвестный или некорректный формат флага.\n");
+        printf("Ошибка: Неизвестный или некорректный формат флага.\n");
         break;
     case STATUS_ERROR_INVALID_ARG_VALUE:
     case STATUS_ERROR_INVALID_FORMAT:
-        fprintf(stderr, "Ошибка: Переданное значение x некорректно для данной операции.\n");
+        printf("Ошибка: Переданное значение x некорректно для данной операции.\n");
         break;
     case STATUS_ERROR_INVALID_PARAMETER:
-        fprintf(stderr, "Ошибка: Для флага -e/e значение x должно быть в диапазоне 1..10.\n");
+        printf("Ошибка: Для флага -e/e значение x должно быть в диапазоне 1..10.\n");
         break;
     case STATUS_ERROR_OUT_OF_RANGE:
-        fprintf(stderr, "Ошибка: Значение выходит за пределы допустимого диапазона.\n");
+        printf("Ошибка: Значение выходит за пределы допустимого диапазона.\n");
         break;
     case STATUS_ERROR_MATH_OVERFLOW:
-        fprintf(stderr, "Ошибка: Произошло математическое переполнение при вычислениях.\n");
+        printf("Ошибка: Произошло математическое переполнение при вычислениях.\n");
         break;
     case STATUS_ERROR_MEMORY_ALLOC:
     case STATUS_ERROR_MEMORY_REALLOC:
-        fprintf(stderr, "Ошибка: Не удалось выделить необходимый объем динамической памяти.\n");
+        printf("Ошибка: Не удалось выделить необходимый объем динамической памяти.\n");
         break;
     case STATUS_ERROR_NULL_POINTER:
-        fprintf(stderr, "Ошибка: В функцию был передан пустой указатель (NULL).\n");
+        printf("Ошибка: В функцию был передан пустой указатель (NULL).\n");
         break;
     default:
-        fprintf(stderr, "Произошла неизвестная ошибка (Код: %d).\n", code);
+        printf("Произошла неизвестная ошибка (Код: %d).\n", code);
         break;
     }
 }
@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
     if (argc != 3)
     {
         print_error_message(STATUS_ERROR_INVALID_ARG_COUNT);
-        fprintf(stderr, "Использование: %s <число_x> <-флаг|/флаг>\n", argv[0]);
+        printf("Использование: %s <число_x> <-флаг|/флаг>\n", argv[0]);
         return STATUS_ERROR_INVALID_ARG_COUNT;
     }
 

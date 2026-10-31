@@ -1,138 +1,237 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdarg.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include <math.h>
-#include <stdarg.h>
+
+#define MAX_ITERATIONS  64
+#define MAX_DENOMINATOR 1000000000LL
+#define EPSILON         1e-9
 
 typedef enum {
-    STATUS_OK = 0,
-    STATUS_ERR_INVALID_ARGS,
-    STATUS_ERR_MEMORY,
-    STATUS_ERR_INVALID_FORMAT
+    SUCCESS = 0,
+    ERROR_NULL_POINTER,
+    ERROR_INVALID_EPSILON,
+    ERROR_INVALID_BASE,
+    ERROR_INVALID_FRACTION,
+    ERROR_INVALID_COUNT,
+    ERROR_LIMIT_EXCEEDED
 } status_code_t;
 
-bool is_finite_in_base(double x, int base) {
-    if (x <= 0.0 || x >= 1.0 || base < 2 || base > 36) {
-        return false;
+static long long gcd(long long a, long long b)
+{
+    if (a < 0) a = -a;
+    if (b < 0) b = -b;
+    while (b != 0) {
+        long long t = b;
+        b = a % b;
+        a = t;
     }
-
-    double current = x;
-    const int max_iter = 53;
-    const double eps = 1e-11;
-
-    for (int i = 0; i < max_iter; ++i) {
-        double int_part;
-        current = current * base;
-        double frac_part = modf(current, &int_part);
-
-        if (frac_part < eps || frac_part > 1.0 - eps) {
-            return true;
-        }
-
-        current = frac_part;
-    }
-    return false;
+    return a;
 }
 
-status_code_t check_fractions_array_finite(int base, size_t count, const double *values) {
-    if (base < 2 || base > 36 || (count > 0 && values == NULL)) {
-        return STATUS_ERR_INVALID_ARGS;
+static status_code_t validate_epsilon(double epsilon)
+{
+    if (!isfinite(epsilon) || epsilon <= 0.0 || epsilon >= 1.0) {
+        return ERROR_INVALID_EPSILON;
     }
-
-    if (count == 0) {
-        printf("Дроби не переданы.\n");
-        return STATUS_OK;
-    }
-
-    for (size_t i = 0; i < count; ++i) {
-        double val = values[i];
-
-        if (val <= 0.0 || val >= 1.0) {
-            printf("Ошибка: Значение %.6f под номером %zu вне диапазона (0; 1).\n", val, i + 1);
-            continue;
-        }
-
-        bool finite = is_finite_in_base(val, base);
-        printf("Дробь: %.10f | Основание: %d -> %s\n", 
-               val, base, finite ? "Конечное" : "Бесконечное");
-    }
-
-    return STATUS_OK;
+    return SUCCESS;
 }
 
-status_code_t check_fractions_finite(int base, size_t count, ...) {
-    if (base < 2 || base > 36) {
-        return STATUS_ERR_INVALID_ARGS;
+static status_code_t find_denominator(double x, double epsilon, long long *out_q)
+{
+    if (out_q == NULL) {
+        return ERROR_NULL_POINTER;
     }
-    if (count == 0) {
-        return check_fractions_array_finite(base, 0, NULL);
+    status_code_t st = validate_epsilon(epsilon);
+    if (st != SUCCESS) {
+        return st;
     }
 
-    double *arr = (double *)malloc(count * sizeof(double));
-    if (arr == NULL) {
-        return STATUS_ERR_MEMORY;
+    double val = x;
+    long long p0 = 0, q0 = 1;
+    long long p1 = 1, q1 = 0;
+
+    for (int iter = 0; iter < MAX_ITERATIONS; ++iter) {
+        double fl = floor(val);
+        if (fl > (double)MAX_DENOMINATOR) {
+            return ERROR_LIMIT_EXCEEDED;
+        }
+        long long a = (long long)fl;
+        if (q1 != 0 && a > (MAX_DENOMINATOR - q0) / q1) {
+            return ERROR_LIMIT_EXCEEDED;
+        }
+
+        long long p2 = a * p1 + p0;
+        long long q2 = a * q1 + q0;
+        if (q2 <= 0) {
+            return ERROR_LIMIT_EXCEEDED;
+        }
+
+        if (fabs(x - (double)p2 / (double)q2) < epsilon) {
+            *out_q = q2;
+            return SUCCESS;
+        }
+
+        double diff = val - fl;
+        if (diff <= 0.0) {
+            return ERROR_LIMIT_EXCEEDED;
+        }
+
+        val = 1.0 / diff;
+        p0 = p1;
+        q0 = q1;
+        p1 = p2;
+        q1 = q2;
+    }
+
+    return ERROR_LIMIT_EXCEEDED;
+}
+
+static status_code_t is_finite_representation(double num, int base,
+                                              double epsilon, bool *result)
+{
+    if (result == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+    status_code_t st = validate_epsilon(epsilon);
+    if (st != SUCCESS) {
+        return st;
+    }
+    if (base < 2) {
+        return ERROR_INVALID_BASE;
+    }
+    if (!isfinite(num) || num <= 0.0 || num >= 1.0) {
+        return ERROR_INVALID_FRACTION;
+    }
+
+    long long q = 0;
+    st = find_denominator(num, epsilon, &q);
+    if (st != SUCCESS) {
+        return st;
+    }
+
+    long long b = (long long)base;
+    long long g = gcd(q, b);
+    while (g > 1) {
+        while (q % g == 0) {
+            q /= g;
+        }
+        g = gcd(q, b);
+    }
+
+    *result = (q == 1);
+    return SUCCESS;
+}
+
+static status_code_t process_fractions(double epsilon, int base,
+                                       bool *results, int count, ...)
+{
+    if (results == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+    status_code_t st = validate_epsilon(epsilon);
+    if (st != SUCCESS) {
+        return st;
+    }
+    if (base < 2) {
+        return ERROR_INVALID_BASE;
+    }
+    if (count <= 0) {
+        return ERROR_INVALID_COUNT;
     }
 
     va_list args;
     va_start(args, count);
-    for (size_t i = 0; i < count; ++i) {
-        arr[i] = va_arg(args, double);
-    }
-    va_end(args);
 
-    status_code_t status = check_fractions_array_finite(base, count, arr);
-    free(arr);
-    return status;
+    for (int i = 0; i < count; ++i) {
+        double fraction = va_arg(args, double);
+        st = is_finite_representation(fraction, base, epsilon, &results[i]);
+        if (st != SUCCESS) {
+            va_end(args);
+            return st;
+        }
+    }
+
+    va_end(args);
+    return SUCCESS;
 }
 
-int main(void) {
-    int base = 0;
-    printf("Введите основание системы счисления [2..36]: ");
-    if (scanf("%d", &base) != 1 || base < 2 || base > 36) {
-        printf("Ошибка: Введено неверное основание. Должно быть от 2 до 36.\n");
-        return 1;
+static const char *status_message(status_code_t st)
+{
+    switch (st) {
+        case SUCCESS:                return "успешно";
+        case ERROR_NULL_POINTER:     return "нулевой указатель";
+        case ERROR_INVALID_EPSILON:  return "epsilon должен быть в (0;1)";
+        case ERROR_INVALID_BASE:     return "основание должно быть >= 2";
+        case ERROR_INVALID_FRACTION: return "число должно быть в (0;1)";
+        case ERROR_INVALID_COUNT:    return "количество чисел должно быть > 0";
+        case ERROR_LIMIT_EXCEEDED:   return "не удалось восстановить дробь (превышен лимит)";
+        default:                     return "неизвестная ошибка";
+    }
+}
+
+static void print_results(int base, const double *vals, const bool *res, int count)
+{
+    printf("Основание %d:\n", base);
+    for (int i = 0; i < count; ++i) {
+        printf("  %-20.17g -> %s\n", vals[i], res[i] ? "конечное" : "бесконечное");
+    }
+    printf("\n");
+}
+
+int main(void)
+{
+    bool res[8];
+    status_code_t st;
+
+    {
+        const double v[] = {0.5, 0.25, 0.1, 0.3, 0.123456, 1.0 / 3.0};
+        st = process_fractions(EPSILON, 10, res, 6, v[0], v[1], v[2], v[3], v[4], v[5]);
+        if (st == SUCCESS) print_results(10, v, res, 6);
+        else printf("Ошибка: %s\n\n", status_message(st));
+    }
+    {
+        const double v[] = {0.5, 0.25, 0.125, 0.1, 0.75};
+        st = process_fractions(EPSILON, 2, res, 5, v[0], v[1], v[2], v[3], v[4]);
+        if (st == SUCCESS) print_results(2, v, res, 5);
+        else printf("Ошибка: %s\n\n", status_message(st));
+    }
+    {
+        const double v[] = {0.5, 1.0 / 3.0, 1.0 / 9.0, 2.0 / 3.0};
+        st = process_fractions(EPSILON, 3, res, 4, v[0], v[1], v[2], v[3]);
+        if (st == SUCCESS) print_results(3, v, res, 4);
+        else printf("Ошибка: %s\n\n", status_message(st));
+    }
+    {
+        const double v[] = {0.5, 0.25, 0.2, 1.0 / 3.0};
+        st = process_fractions(EPSILON, 6, res, 4, v[0], v[1], v[2], v[3]);
+        if (st == SUCCESS) print_results(6, v, res, 4);
+        else printf("Ошибка: %s\n\n", status_message(st));
+    }
+    {
+        const double v[] = {0.5, 0.0625, 0.1};
+        st = process_fractions(EPSILON, 16, res, 3, v[0], v[1], v[2]);
+        if (st == SUCCESS) print_results(16, v, res, 3);
+        else printf("Ошибка: %s\n\n", status_message(st));
     }
 
-    size_t count = 0;
-    printf("Введите количество дробей для проверки: ");
-    if (scanf("%zu", &count) != 1) {
-        printf("Ошибка: Введено неверное количество.\n");
-        return 1;
-    }
+    printf("--- проверка ошибок ---\n");
 
-    if (count == 0) {
-        printf("Нечего проверять (количество равно 0).\n");
-        return 0;
-    }
+    st = process_fractions(EPSILON, 1, res, 1, 0.5);
+    printf("основание 1:      %s\n", status_message(st));
 
-    double *fractions = (double *)malloc(count * sizeof(double));
-    if (fractions == NULL) {
-        printf("Ошибка: Не удалось выделить память.\n");
-        return 1;
-    }
+    st = process_fractions(EPSILON, 10, res, 2, 0.5, 1.5);
+    printf("число 1.5:        %s\n", status_message(st));
 
-    for (size_t i = 0; i < count; ++i) {
-        printf("Введите дробь %zu (строго между 0 и 1): ", i + 1);
-        if (scanf("%lf", &fractions[i]) != 1) {
-            printf("Ошибка: Не удалось прочитать значение дроби.\n");
-            free(fractions);
-            return 1;
-        }
+    st = process_fractions(EPSILON, 10, res, 0);
+    printf("count = 0:        %s\n", status_message(st));
 
-        if (fractions[i] <= 0.0 || fractions[i] >= 1.0) {
-            printf("Предупреждение: Дробь %.4f вне диапазона (0; 1). Она будет пропущена при обработке.\n", fractions[i]);
-        }
-    }
+    st = process_fractions(0.0, 10, res, 1, 0.5);
+    printf("epsilon = 0:      %s\n", status_message(st));
 
-    printf("\n Обработка введенных данных\n");
-    status_code_t status = check_fractions_array_finite(base, count, fractions);
-
-    free(fractions);
-
-    if (status != STATUS_OK) {
-        printf("Ошибка: Вычисление завершилось с кодом %d.\n", (int)status);
-        return 1;
-    }
+    st = process_fractions(EPSILON, 10, NULL, 1, 0.5);
+    printf("results = NULL:   %s\n", status_message(st));
 
     return 0;
 }
